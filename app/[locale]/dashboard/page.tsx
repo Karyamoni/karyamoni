@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import { PilotDashboard } from "@/components/dashboard/PilotDashboard";
 import { getContent } from "@/lib/content";
 import { isLocale } from "@/lib/i18n";
@@ -26,6 +27,7 @@ export default async function DashboardPage({ params }: Props) {
 
   return (
     <>
+      <SmoothScroll />
       <SiteHeader locale={locale} />
       <PilotDashboard locale={locale} content={getContent(locale)} user={user} />
     </>

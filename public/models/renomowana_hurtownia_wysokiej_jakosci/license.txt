@@ -1,0 +1,11 @@
+Model Information:
+* title:	Renomowana hurtownia wysokiej jakosci
+* source:	https://sketchfab.com/3d-models/renomowana-hurtownia-wysokiej-jakosci-3735e9ebfffe455eacbbc6144c6e0b10
+* author:	Wólka Kosowska (https://sketchfab.com/wolkahurt.eu)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Renomowana hurtownia wysokiej jakosci" (https://sketchfab.com/3d-models/renomowana-hurtownia-wysokiej-jakosci-3735e9ebfffe455eacbbc6144c6e0b10) by Wólka Kosowska (https://sketchfab.com/wolkahurt.eu) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

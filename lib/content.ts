@@ -13,6 +13,7 @@ type DocsSection = {
   title: string;
   body: string;
   points: string[];
+  steps?: string[];
 };
 
 export const content: Record<
@@ -186,24 +187,46 @@ export const content: Record<
       lead: "IKAS kurulumu, ürün aktivasyonu ve dashboard kullanımı için açık dokümantasyon.",
       sections: [
         {
-          title: "IKAS uygulama kurulumu",
-          body: "Karyamoni, IKAS uygulaması olarak kurulacak şekilde planlanır.",
-          points: ["Uygulama izinlerini onayla", "Ürün verisini senkronize et", "Deneme girişini ürün sayfasına yerleştir"]
+          title: "Karyamoni nedir?",
+          body: "Karyamoni, doğrudan IKAS mağazanıza kurulan bir sanal deneme uygulamasıdır. Alışveriş yapanlar, ürün sayfasından çıkmadan 3D deneme kabininde kıyafet dener.",
+          points: ["Ayrı web sitesi yok", "Mağazanın içinde çalışır", "Türkçe ve İngilizce destek"]
         },
         {
-          title: "Ürün aktivasyonu",
-          body: "Satıcı, desteklenen ürünleri seçer ve eksik beden/ölçü verilerini tamamlar.",
+          title: "İade oranlarını neden düşürür?",
+          body: "Yanlış beden seçimi, kıyafet iadelerinin en büyük nedenidir. Karyamoni, alışveriş yapanlara ödeme öncesi beden tavsiyesi vererek güvenli alım sağlar.",
+          points: ["Yanlış beden iadesi azalır", "Alışverişçi güveni artar", "Deneme sonrası sepete ekleme oranı yükselir"]
+        },
+        {
+          title: "IKAS kurulumu nasıl yapılır?",
+          body: "Karyamoni, birkaç adımda IKAS uygulaması olarak kurulur. Geliştirici gerekmez.",
+          points: ["IKAS App Store'da bul", "İzinleri bir kez ver", "Ürünler otomatik senkronize olur"],
+          steps: [
+            "IKAS yönetici panelinizi açın",
+            "Uygulamalar → App Store'a gidin",
+            "Karyamoni'yi arayın",
+            "Kur'a tıklayın ve izinleri onaylayın",
+            "Ürünleriniz arka planda senkronize olur"
+          ]
+        },
+        {
+          title: "Ürünlerinizi nasıl aktive edersiniz?",
+          body: "Hangi ürünlerde deneme butonu gösterileceğini seçin. Her ürün, neye dikkat etmeniz gerektiğini gösteren bir hazırlık durumu gösterir.",
           points: ["Hazır", "Eksik veri", "Desteklenmiyor", "Canlı"]
         },
         {
-          title: "Dashboard",
-          body: "Pilot dashboard erken entegrasyon ve kullanım sinyallerini gösterir.",
-          points: ["Kurulum checklist'i", "Try-on kullanım metriği", "İade etkisi alanı"]
+          title: "Alışveriş yapanlar nasıl kullanır?",
+          body: "Ürün sayfasındaki alışveriş yapan deneme butonuna tıklar, temel beden bilgilerini girer ve aynı sayfa içinde beden tavsiyesi alır.",
+          points: ["0 yönlendirme", "3 dakika altında", "Net beden sonucu"]
         },
         {
-          title: "Gelecek API notları",
-          body: "Gerçek IKAS araştırmasından sonra API, webhook ve ürün veri gereksinimleri netleştirilecek.",
-          points: ["Ürün varyantları", "Beden tabloları", "Dönüşüm ve iade olayları"]
+          title: "Dashboard ve analitik",
+          body: "Pilot dashboard; kurulum durumunuzu, hazır ürünlerinizi, kaç alışveriş yapanın deneme başlattığını ve erken iade etkisi sinyallerini gösterir.",
+          points: ["Kurulum checklist'i", "Deneme kullanım sayısı", "İade etkisi alanı"]
+        },
+        {
+          title: "Gizlilik ve veri",
+          body: "Alışveriş yapanların beden bilgisi hassas kabul edilir. Karyamoni, kişisel fit verisini saklamadan önce onay alır ve KVKK gerekliliklerine uyar.",
+          points: ["Açık rıza zorunlu", "KVKK uyumlu", "Veri üçüncü taraflara satılmaz"]
         }
       ]
     },
@@ -334,24 +357,46 @@ export const content: Record<
       lead: "Open documentation for IKAS installation, product activation, and dashboard usage.",
       sections: [
         {
-          title: "IKAS app install",
-          body: "Karyamoni is planned as an IKAS application installation.",
-          points: ["Approve app permissions", "Sync product data", "Place the try-on entry on product pages"]
+          title: "What is Karyamoni?",
+          body: "Karyamoni is a virtual try-on app that installs directly into your IKAS store. Shoppers try on clothing in a 3D fitting cabin without leaving the product page.",
+          points: ["No separate website", "Works inside your store", "Turkish and English support"]
         },
         {
-          title: "Product activation",
-          body: "The merchant selects supported products and completes missing size or measurement data.",
+          title: "Why it reduces returns",
+          body: "Size confusion is the top reason for clothing returns. Karyamoni gives shoppers a fit result before checkout so they buy with confidence.",
+          points: ["Fewer wrong-size returns", "Higher shopper confidence", "More add-to-cart after try-on"]
+        },
+        {
+          title: "How to install on IKAS",
+          body: "Karyamoni installs as an IKAS application in a few steps. No developer needed.",
+          points: ["Find in IKAS App Store", "Grant permissions once", "Products sync automatically"],
+          steps: [
+            "Open your IKAS admin panel",
+            "Go to Apps → App Store",
+            "Search for Karyamoni",
+            "Click Install and approve permissions",
+            "Your products sync in the background"
+          ]
+        },
+        {
+          title: "Activate your products",
+          body: "Choose which products show the try-on button. Each product shows a readiness status so you know what needs attention.",
           points: ["Ready", "Missing data", "Unsupported", "Live"]
         },
         {
-          title: "Dashboard",
-          body: "The pilot dashboard shows early integration and usage signals.",
-          points: ["Setup checklist", "Try-on usage metrics", "Return impact area"]
+          title: "How shoppers use it",
+          body: "A shopper on your product page clicks the try-on button, enters basic fit information, and gets a size recommendation inside the same page.",
+          points: ["0 redirects", "Under 3 minutes", "Clear size result"]
         },
         {
-          title: "Future API notes",
-          body: "API, webhook, and product data requirements will be locked after IKAS research.",
-          points: ["Product variants", "Size charts", "Conversion and return events"]
+          title: "Dashboard & analytics",
+          body: "The pilot dashboard shows your installation status, which products are ready, how many shoppers started a try-on, and early return impact signals.",
+          points: ["Setup checklist", "Try-on usage count", "Return impact area"]
+        },
+        {
+          title: "Privacy & data",
+          body: "Shopper body information is treated as sensitive. Karyamoni collects consent before storing any personal fit data and complies with KVKK requirements.",
+          points: ["Explicit consent required", "KVKK compliant", "No data sold to third parties"]
         }
       ]
     },

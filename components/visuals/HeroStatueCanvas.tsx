@@ -99,7 +99,7 @@ function LoadingStatue() {
 
 export function HeroStatueCanvas() {
   return (
-    <Canvas camera={{ position: [0, 0.42, 4.7], fov: 33 }} dpr={[1, 1.8]} shadows>
+    <Canvas camera={{ position: [0, 0.42, 4.7], fov: 33 }} dpr={[1, 1.8]} shadows="percentage">
       <Suspense fallback={<LoadingStatue />}>
         <GalleryScene />
       </Suspense>

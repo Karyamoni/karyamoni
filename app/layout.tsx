@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ThreeSilencer } from "@/components/ThreeSilencer";
 
 export const metadata: Metadata = {
   title: "Karyamoni",
@@ -37,7 +38,10 @@ const neueHaas = localFont({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr" data-scroll-behavior="smooth">
-      <body className={neueHaas.variable}>{children}</body>
+      <body className={neueHaas.variable}>
+        <ThreeSilencer />
+        {children}
+      </body>
     </html>
   );
 }
