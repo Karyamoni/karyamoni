@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PlaygroundScrollStory } from "@/components/landing/PlaygroundScrollStory";
 import { HeroStatueCanvas } from "@/components/visuals/HeroStatueCanvas";
 import { FooterSection } from "@/components/landing/FooterSection";
+import { PhilosophyScroll } from "@/components/landing/PhilosophyScroll";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/lib/content";
 
@@ -178,6 +179,7 @@ export function EditorialLanding({ locale, content }: Props) {
         ))}
       </section>
 
+      <PhilosophyScroll />
       <FooterSection locale={locale} />
     </main>
   );

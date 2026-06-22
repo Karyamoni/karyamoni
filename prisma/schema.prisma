@@ -14,11 +14,37 @@ model User {
   name               String?
   image              String?
   locale             String              @default("tr")
+  suspiciousAt       DateTime?
+  mfaEnabled         Boolean             @default(false)
+  mfaSecret          String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   accounts           AuthAccount[]
   merchantProfile    MerchantProfile?
   playgroundSessions PlaygroundSession[]
+  sessions           Session[]
+  mfaPendingTokens   MfaPendingToken[]
+}
+
+model MfaPendingToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  ip        String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  issuedIp   String
+  lastSeenIp String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AuthAccount {

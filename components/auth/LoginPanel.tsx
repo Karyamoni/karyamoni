@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ArrowRight, MessageCircle, ShieldCheck } from "lucide-react";
@@ -62,6 +61,12 @@ export function LoginPanel({ locale, content }: Props) {
       return;
     }
 
+    if (result.mfaRequired && result.pendingToken) {
+      const dest = `/${result.locale ?? locale}/mfa-challenge?t=${encodeURIComponent(result.pendingToken)}&next=${encodeURIComponent(next)}`;
+      router.push(dest);
+      return;
+    }
+
     router.push(next);
     router.refresh();
   }
@@ -89,13 +94,13 @@ export function LoginPanel({ locale, content }: Props) {
         </div>
 
         <div className="col-span-4 border border-white/20 bg-[var(--color-paper)] text-[var(--color-ink)] md:col-span-5 lg:col-span-8">
-          <Link
+          <a
             href={`/api/auth/google/start?next=${encodeURIComponent(next)}`}
             className="grid min-h-24 grid-cols-[1fr_auto] items-center border-b border-[var(--color-ink)] p-4 text-3xl font-black uppercase leading-none transition-colors hover:bg-[var(--color-signal)] hover:text-[var(--color-paper)] md:text-5xl"
           >
             {content.login.google}
             <ArrowRight size={42} aria-hidden />
-          </Link>
+          </a>
 
           <form onSubmit={sent ? verifyCode : sendCode} className="grid md:grid-cols-2">
             <label className="border-b border-[var(--color-ink)] p-4 md:border-b-0 md:border-r">

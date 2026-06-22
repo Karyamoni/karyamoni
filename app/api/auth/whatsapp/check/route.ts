@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
-import { createCustomSession, setCustomSessionCookie } from "@/lib/session";
+import { createSession, upsertUser, setSessionCookie, getIpFromRequest } from "@/lib/session";
+import { getUserMfaStatus, createMfaPendingToken } from "@/lib/mfa";
+import { db } from "@/lib/db";
 
 const schema = z.object({
   phone: z.string().min(8).max(20),
@@ -9,28 +11,34 @@ const schema = z.object({
 });
 
 function twilioConfigured() {
-  return Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_VERIFY_SERVICE_SID);
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
+    process.env.TWILIO_VERIFY_SERVICE_SID
+  );
 }
 
 async function checkVerification(phone: string, code: string) {
-  const credentials = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString("base64");
-  const body = new URLSearchParams({
-    To: phone,
-    Code: code
-  });
+  const credentials = Buffer.from(
+    `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+  ).toString("base64");
+  const body = new URLSearchParams({ To: phone, Code: code });
 
-  return fetch(`https://verify.twilio.com/v2/Services/${process.env.TWILIO_VERIFY_SERVICE_SID}/VerificationCheck`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body
-  });
+  return fetch(
+    `https://verify.twilio.com/v2/Services/${process.env.TWILIO_VERIFY_SERVICE_SID}/VerificationCheck`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body
+    }
+  );
 }
 
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for") ?? "local";
+  const ip = getIpFromRequest(request);
   const parsed = schema.safeParse(await request.json());
 
   if (!parsed.success) {
@@ -51,7 +59,6 @@ export async function POST(request: Request) {
     if (!response.ok) {
       return NextResponse.json({ error: "Verification failed" }, { status: 401 });
     }
-
     const result = (await response.json()) as { status?: string; valid?: boolean };
     approved = result.status === "approved" || result.valid === true;
   }
@@ -60,13 +67,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or expired code" }, { status: 401 });
   }
 
-  const token = createCustomSession({
-    provider: "whatsapp",
+  const userId = await upsertUser({
     phone: parsed.data.phone,
     name: `WhatsApp ${parsed.data.phone}`,
-    createdAt: Date.now()
+    provider: "whatsapp"
   });
-  await setCustomSessionCookie(token);
+
+  const mfa = await getUserMfaStatus(userId);
+
+  if (mfa.enabled) {
+    const user = await db.user.findUnique({ where: { id: userId }, select: { locale: true } });
+    const locale = user?.locale ?? "tr";
+    const pendingToken = await createMfaPendingToken(userId, ip);
+    return NextResponse.json({ mfaRequired: true, pendingToken, locale });
+  }
+
+  const rawToken = await createSession(userId, ip);
+  await setSessionCookie(rawToken);
 
   return NextResponse.json({ ok: true });
 }

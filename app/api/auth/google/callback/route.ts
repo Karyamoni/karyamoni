@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { createCustomSession } from "@/lib/session";
+import { createSession, upsertUser, getIpFromRequest } from "@/lib/session";
+import { getUserMfaStatus, createMfaPendingToken } from "@/lib/mfa";
+import { db } from "@/lib/db";
 
+const cookieName = "karyamoni_session";
 const stateCookie = "karyamoni_google_state";
 const nextCookie = "karyamoni_auth_next";
 
@@ -17,6 +20,11 @@ type GoogleProfile = {
 
 function appUrl(request: Request) {
   return process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+}
+
+async function getLocaleForUser(userId: string): Promise<string> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { locale: true } });
+  return user?.locale ?? "tr";
 }
 
 export async function GET(request: Request) {
@@ -42,9 +50,7 @@ export async function GET(request: Request) {
 
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -60,9 +66,7 @@ export async function GET(request: Request) {
   }
 
   const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-    headers: {
-      Authorization: `Bearer ${token.access_token}`
-    }
+    headers: { Authorization: `Bearer ${token.access_token}` }
   });
   const profile = (await profileResponse.json()) as GoogleProfile;
 
@@ -70,20 +74,37 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/tr/login?error=google_profile", request.url));
   }
 
-  const session = createCustomSession({
-    provider: "google",
+  const userId = await upsertUser({
     email: profile.email,
     name: profile.name ?? profile.email,
     image: profile.picture,
-    createdAt: Date.now()
+    provider: "google"
   });
 
-  const response = NextResponse.redirect(new URL(next ? decodeURIComponent(next) : "/tr/dashboard", request.url));
-  response.cookies.set("karyamoni_session", session, {
+  const ip = getIpFromRequest(request);
+  const mfa = await getUserMfaStatus(userId);
+
+  if (mfa.enabled) {
+    const locale = await getLocaleForUser(userId);
+    const pendingToken = await createMfaPendingToken(userId, ip);
+    const dest = new URL(`/${locale}/mfa-challenge`, request.url);
+    dest.searchParams.set("t", pendingToken);
+    if (next) dest.searchParams.set("next", next);
+    const response = NextResponse.redirect(dest);
+    response.cookies.delete(stateCookie);
+    response.cookies.delete(nextCookie);
+    return response;
+  }
+
+  const rawToken = await createSession(userId, ip);
+  const response = NextResponse.redirect(
+    new URL(next ? decodeURIComponent(next) : "/tr/dashboard", request.url)
+  );
+  response.cookies.set(cookieName, rawToken, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 7 * 24 * 60 * 60,
     path: "/"
   });
   response.cookies.delete(stateCookie);
