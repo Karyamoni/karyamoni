@@ -40,5 +40,16 @@
   },
   "overrides": {
     "postcss": "8.5.10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "@swc/core",
+      "sharp",
+      "@parcel/watcher",
+      "unrs-resolver"
+    ]
   }
 }
