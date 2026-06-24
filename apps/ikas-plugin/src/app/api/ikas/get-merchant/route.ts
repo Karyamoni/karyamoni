@@ -12,13 +12,13 @@ export async function GET(req: NextRequest) {
 
   let client;
   try {
-    client = await getIkasForStore(user.storeId);
+    client = await getIkasForStore(user.storeName);
   } catch {
     return NextResponse.json({ error: "No token for store" }, { status: 403 });
   }
 
   const result = await client.query<{
-    merchant: { id: string; name: string; email: string; storeUrl: string };
+    getMerchant: { id: string; merchantName: string; email: string; storeName: string };
   }>({ query: print(GET_MERCHANT) });
 
   if (!result.isSuccess || !result.data) {
@@ -28,5 +28,5 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return NextResponse.json(result.data.merchant);
+  return NextResponse.json(result.data.getMerchant);
 }

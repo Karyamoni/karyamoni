@@ -15,4 +15,34 @@ model AuthToken {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  merchant     Merchant? @relation(fields: [store], references: [storeName])
+}
+
+model Merchant {
+  id            String    @id @default(cuid())
+  storeName     String    @unique
+  merchantCdnId String?
+  name          String
+  email         String
+  storeUrl      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  token         AuthToken?
+  products      Product[]
+}
+
+model Product {
+  id             String   @id
+  storeName      String
+  name           String
+  categoryName   String?
+  imageId        String?
+  modelUrl       String?
+  variantCount   Int      @default(0)
+  state          String   @default("missing")
+  readinessScore Int      @default(0)
+  missingFields  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  merchant       Merchant @relation(fields: [storeName], references: [storeName], onDelete: Cascade)
 }

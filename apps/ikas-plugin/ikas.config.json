@@ -1,5 +1,7 @@
 {
-  "clientId": "NEXT_PUBLIC_CLIENT_ID",
-  "adminUrl": "NEXT_PUBLIC_ADMIN_URL",
-  "graphApiUrl": "NEXT_PUBLIC_GRAPH_API_URL"
+  "portMapping": {
+    "default": 3000
+  },
+  "oauthRedirectPath": "/api/oauth/callback/ikas",
+  "actions": []
 }

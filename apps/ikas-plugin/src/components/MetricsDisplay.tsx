@@ -138,32 +138,10 @@ export function MetricsDisplay() {
       </motion.div>
 
       <div>
-        <MonumentalMetric
-          value="−18%"
-          label="return rate reduction since try-on activation"
-          sublabel="Pilot baseline vs. post-activation"
-          accent="lime"
-          delay={0.1}
-        />
-        <MonumentalMetric
-          value="1,248"
-          label="total try-on sessions this month"
-          sublabel="Desktop + mobile web"
-          delay={0.2}
-        />
-        <MonumentalMetric
-          value="+24%"
-          label="add-to-cart rate after try-on completion"
-          sublabel="vs. sessions without try-on"
-          accent="lime"
-          delay={0.3}
-        />
-        <MonumentalMetric
-          value="91%"
-          label="fit confidence — shoppers rating their size recommendation accurate"
-          sublabel="Based on post-purchase survey sample"
-          delay={0.4}
-        />
+        <MonumentalMetric value="—" label="return rate reduction" sublabel="Available after return data is connected" delay={0.1} />
+        <MonumentalMetric value="—" label="total try-on sessions" sublabel="Available after widget activation" delay={0.2} />
+        <MonumentalMetric value="—" label="add-to-cart lift after try-on" sublabel="Available after sufficient session volume" delay={0.3} />
+        <MonumentalMetric value="—" label="fit confidence score" sublabel="Available after post-purchase survey data" delay={0.4} />
       </div>
 
       <motion.p
@@ -173,7 +151,7 @@ export function MetricsDisplay() {
         className="type-caption"
         style={{ marginTop: "32px", color: "var(--ink-40)" }}
       >
-        Data updates every 24 hours · Pilot phase metrics
+        Complete setup steps to unlock analytics
       </motion.p>
     </section>
   );

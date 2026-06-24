@@ -1,83 +1,25 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { IkasProduct, ProductState } from "@/app/api/ikas/products/route";
+import { SyncButton } from "@/components/SyncButton";
 
-type ProductState = "live" | "ready" | "missing" | "unsupported";
-
-interface ProductEntry {
-  id: string;
-  name: string;
-  category: string;
-  state: ProductState;
-  readinessScore?: number;
-  missingFields?: string[];
-}
-
-// Mock data — replace with real IKAS product sync data
-const PRODUCTS: ProductEntry[] = [
-  {
-    id: "p1",
-    name: "Essential Cotton Tee",
-    category: "T-Shirt",
-    state: "live",
-    readinessScore: 98,
-  },
-  {
-    id: "p2",
-    name: "Oxford Button-Down",
-    category: "Shirt",
-    state: "ready",
-    readinessScore: 91,
-  },
-  {
-    id: "p3",
-    name: "Merino Crewneck",
-    category: "Sweater",
-    state: "missing",
-    readinessScore: 44,
-    missingFields: ["Shoulder width", "Chest measurement"],
-  },
-  {
-    id: "p4",
-    name: "Linen Blouse",
-    category: "Blouse",
-    state: "missing",
-    readinessScore: 62,
-    missingFields: ["Size chart"],
-  },
-  {
-    id: "p5",
-    name: "Denim Jacket",
-    category: "Outerwear",
-    state: "unsupported",
-  },
-];
-
-// Mosaic grid spans — varied density signals state, not symmetry
 const SPAN_MAP: Record<ProductState, string> = {
-  live: "1 / 9",        // 8 cols — dominant
-  ready: "1 / 7",       // 6 cols — substantial
-  missing: "1 / 5",     // 4 cols — compact
-  unsupported: "1 / 4", // 3 cols — minimal
+  live: "1 / 9",
+  ready: "1 / 7",
+  missing: "1 / 5",
 };
 
 const STATE_LABELS: Record<ProductState, string> = {
   live: "Live",
   ready: "Ready",
   missing: "Missing Data",
-  unsupported: "Unsupported",
 };
 
-function ProductCard({
-  product,
-  delay,
-}: {
-  product: ProductEntry;
-  delay: number;
-}) {
+function ProductCard({ product, delay }: { product: IkasProduct; delay: number }) {
   const isLive = product.state === "live";
   const isMissing = product.state === "missing";
-  const isUnsupported = product.state === "unsupported";
+  const canTryOn = product.state !== "missing";
 
   return (
     <motion.article
@@ -94,41 +36,44 @@ function ProductCard({
         overflow: "hidden",
       }}
     >
-      {/* Category label */}
-      <p
-        className="type-caption"
-        style={{
-          marginBottom: isLive ? "12px" : "8px",
-          color: isLive ? "rgba(250,250,249,0.5)" : "var(--ink-60)",
-        }}
-      >
-        {product.category}
-      </p>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: isLive ? "12px" : "8px" }}>
+        {product.imageUrl && (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            width={isLive ? 72 : 48}
+            height={isLive ? 72 : 48}
+            style={{
+              objectFit: "cover",
+              borderRadius: "2px",
+              flexShrink: 0,
+              opacity: isLive ? 1 : 0.8,
+              border: isLive ? "none" : "1px solid var(--ink-10)",
+            }}
+          />
+        )}
+        <p
+          className="type-caption"
+          style={{ color: isLive ? "rgba(250,250,249,0.5)" : "var(--ink-60)", paddingTop: "2px" }}
+        >
+          {product.category}
+        </p>
+      </div>
 
-      {/* Product name — scale varies by state */}
       <h3
         style={{
-          fontSize: isLive
-            ? "clamp(24px, 3.5vw, 42px)"
-            : product.state === "ready"
-            ? "clamp(18px, 2.5vw, 28px)"
-            : "clamp(14px, 1.8vw, 18px)",
+          fontSize: isLive ? "clamp(24px, 3.5vw, 42px)" : product.state === "ready" ? "clamp(18px, 2.5vw, 28px)" : "clamp(14px, 1.8vw, 18px)",
           fontWeight: 500,
           letterSpacing: isLive ? "-0.03em" : "-0.01em",
           lineHeight: 1.1,
-          color: isLive
-            ? "var(--paper)"
-            : isUnsupported
-            ? "var(--ink-40)"
-            : "var(--ink)",
+          color: isLive ? "var(--paper)" : "var(--ink)",
           marginBottom: "12px",
         }}
       >
         {product.name}
       </h3>
 
-      {/* Score — only for live/ready */}
-      {product.readinessScore !== undefined && !isUnsupported && (
+      {product.readinessScore > 0 && (
         <p
           style={{
             fontSize: isLive ? "clamp(56px, 7vw, 96px)" : "clamp(32px, 4vw, 52px)",
@@ -140,40 +85,23 @@ function ProductCard({
           }}
         >
           {product.readinessScore}
-          <span
-            style={{
-              fontSize: "0.3em",
-              verticalAlign: "super",
-              color: isLive ? "rgba(190,255,92,0.6)" : "var(--ink-40)",
-            }}
-          >
+          <span style={{ fontSize: "0.3em", verticalAlign: "super", color: isLive ? "rgba(190,255,92,0.6)" : "var(--ink-40)" }}>
             %
           </span>
         </p>
       )}
 
-      {/* Missing fields list */}
       {isMissing && product.missingFields && (
         <ul style={{ listStyle: "none", marginTop: "8px" }}>
           {product.missingFields.map((f) => (
-            <li
-              key={f}
-              className="type-caption"
-              style={{
-                fontSize: "10px",
-                color: "var(--coral)",
-                paddingBlock: "2px",
-                borderBottom: "1px solid rgba(255,107,91,0.15)",
-              }}
-            >
+            <li key={f} className="type-caption" style={{ fontSize: "10px", color: "var(--coral)", paddingBlock: "2px", borderBottom: "1px solid rgba(255,107,91,0.15)" }}>
               ↳ {f}
             </li>
           ))}
         </ul>
       )}
 
-      {/* Status badge */}
-      <div style={{ marginTop: isLive ? "20px" : "12px" }}>
+      <div style={{ marginTop: isLive ? "20px" : "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
         <span
           style={{
             display: "inline-block",
@@ -183,46 +111,55 @@ function ProductCard({
             fontWeight: 600,
             letterSpacing: "0.06em",
             textTransform: "uppercase",
-            ...(isLive && {
-              background: "var(--lime)",
-              color: "var(--ink)",
-            }),
-            ...(product.state === "ready" && {
-              border: "1px solid var(--lime)",
-              color: "var(--ink)",
-            }),
-            ...(isMissing && {
-              border: "1px solid var(--coral)",
-              color: "var(--coral)",
-            }),
-            ...(isUnsupported && {
-              border: "1px solid var(--mist-deep)",
-              color: "var(--ink-40)",
-            }),
+            ...(isLive && { background: "var(--lime)", color: "var(--ink)" }),
+            ...(product.state === "ready" && { border: "1px solid var(--lime)", color: "var(--ink)" }),
+            ...(isMissing && { border: "1px solid var(--coral)", color: "var(--coral)" }),
           }}
         >
           {STATE_LABELS[product.state]}
         </span>
+
+        {canTryOn && (
+          <a
+            href={`/dashboard/try-on?productId=${product.id}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "3px 10px",
+              borderRadius: "2px",
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              textDecoration: "none",
+              background: isLive ? "rgba(190,255,92,0.15)" : "rgba(10,10,10,0.06)",
+              color: isLive ? "var(--lime)" : "var(--ink-60)",
+              border: isLive ? "1px solid rgba(190,255,92,0.3)" : "1px solid var(--ink-10)",
+              transition: "background 0.15s ease",
+            }}
+          >
+            <span style={{ fontSize: "9px" }}>▶</span>
+            {product.modelUrl ? "3D Cabinet" : "Try On (no model)"}
+          </a>
+        )}
       </div>
     </motion.article>
   );
 }
 
-export function ProductMosaic() {
-  return (
-    <section aria-labelledby="products-heading" style={{ paddingBlock: "48px 64px" }}>
-      {/* Section header */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: "32px" }}
-      >
-        <p className="type-caption" style={{ marginBottom: "8px" }}>
-          Products
-        </p>
-        <h2
-          id="products-heading"
+type Props = { products: IkasProduct[]; storeName: string | null };
+
+export function ProductMosaic({ products, storeName }: Props) {
+  const adminUrl = storeName
+    ? `https://${storeName}.myikas.com/admin/product`
+    : "https://app.myikas.com";
+
+  if (products.length === 0) {
+    return (
+      <section style={{ paddingBlock: "48px 64px" }}>
+        <p className="type-caption" style={{ marginBottom: "8px" }}>Products</p>
+        <p
           style={{
             fontSize: "clamp(36px, 5vw, 72px)",
             fontWeight: 500,
@@ -230,18 +167,83 @@ export function ProductMosaic() {
             lineHeight: 0.95,
           }}
         >
-          Readiness
+          No products
           <br />
-          <span style={{ color: "var(--ink-40)" }}>overview</span>
-        </h2>
+          <span style={{ color: "var(--ink-40)" }}>yet</span>
+        </p>
+        <p className="type-body" style={{ marginTop: "20px", fontSize: "13px", color: "var(--ink-40)", maxWidth: "320px" }}>
+          Add products to your ikas store — they will appear here after syncing.
+        </p>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "24px", alignItems: "center" }}>
+          <a
+            href={adminUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-block",
+              padding: "12px 24px",
+              background: "var(--ink)",
+              color: "var(--paper)",
+              fontSize: "13px",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              textDecoration: "none",
+              borderRadius: "2px",
+            }}
+          >
+            Add products in ikas →
+          </a>
+          <SyncButton variant="ghost" label="Already added? Sync" />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="products-heading" style={{ paddingBlock: "48px 64px" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+        style={{ marginBottom: "32px" }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
+          <div>
+            <p className="type-caption" style={{ marginBottom: "8px" }}>Products</p>
+            <h2 id="products-heading" style={{ fontSize: "clamp(36px, 5vw, 72px)", fontWeight: 500, letterSpacing: "-0.035em", lineHeight: 0.95 }}>
+              Readiness
+              <br />
+              <span style={{ color: "var(--ink-40)" }}>overview</span>
+            </h2>
+          </div>
+          <div style={{ paddingTop: "4px", display: "flex", gap: "8px", alignItems: "center" }}>
+            <a
+              href={adminUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                padding: "8px 14px",
+                background: "var(--ink)",
+                color: "var(--paper)",
+                fontSize: "11px",
+                fontWeight: 600,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                textDecoration: "none",
+                borderRadius: "2px",
+              }}
+            >
+              ikas admin →
+            </a>
+            <SyncButton variant="ghost" label="Sync" />
+          </div>
+        </div>
       </motion.div>
 
-      {/* Mosaic grid — NOT uniform rows, varied density per product state */}
-      <div
-        className="power-grid"
-        style={{ rowGap: "clamp(8px, 1vw, 16px)", alignItems: "start" }}
-      >
-        {PRODUCTS.map((product, i) => (
+      <div className="power-grid" style={{ rowGap: "clamp(8px, 1vw, 16px)", alignItems: "start" }}>
+        {products.map((product, i) => (
           <ProductCard key={product.id} product={product} delay={0.1 + i * 0.07} />
         ))}
       </div>
@@ -253,7 +255,7 @@ export function ProductMosaic() {
         className="type-body"
         style={{ marginTop: "24px", fontSize: "12px", color: "var(--ink-40)" }}
       >
-        MVP focuses on Tops category — t-shirts, shirts, blouses, sweaters
+        Products are scored by category assignment and variant completeness.
       </motion.p>
     </section>
   );

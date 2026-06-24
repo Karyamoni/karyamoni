@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useBaseHomePage } from "./hooks/use-base-home-page";
 
 export default function RootPage() {
-  redirect("/dashboard");
+  useBaseHomePage();
+  return null;
 }

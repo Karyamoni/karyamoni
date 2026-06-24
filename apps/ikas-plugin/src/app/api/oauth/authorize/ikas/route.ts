@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { OAuthAPI } from "@ikas/admin-api-client";
 import { randomBytes } from "crypto";
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
+  const { searchParams } = new URL(req.url);
+  const storeName = searchParams.get("storeName");
 
-  // CSRF nonce stored in session, verified on callback
+  if (!storeName) {
+    return NextResponse.json({ error: "Missing storeName param" }, { status: 400 });
+  }
+
+  const session = await getSession();
   const state = randomBytes(16).toString("hex");
   session.oauthState = state;
+  session.store = storeName;
+
+  const linkToken = searchParams.get("link_token");
+  if (linkToken) session.linkToken = linkToken;
+
   await session.save();
 
-  const params = new URLSearchParams({
-    response_type: "code",
-    client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXT_PUBLIC_DEPLOY_URL}/api/oauth/callback/ikas`,
-    scope: "read_products write_products read_orders",
-    state,
-  });
+  const oauthBaseUrl = OAuthAPI.getOAuthUrl({ storeName });
 
-  const authUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/oauth/authorize?${params}`;
-  return NextResponse.redirect(authUrl);
+  const authorizeUrl =
+    `${oauthBaseUrl}/authorize` +
+    `?client_id=${encodeURIComponent(process.env.NEXT_PUBLIC_CLIENT_ID!)}` +
+    `&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_DEPLOY_URL}/api/oauth/callback/ikas`)}` +
+    `&scope=${encodeURIComponent("read_products,write_products,read_orders")}` +
+    `&state=${encodeURIComponent(state)}`;
+
+  return NextResponse.redirect(authorizeUrl);
 }

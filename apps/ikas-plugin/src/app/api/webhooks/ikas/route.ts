@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac } from "crypto";
-
-async function validateHmac(req: NextRequest, rawBody: string): Promise<boolean> {
-  const signature = req.headers.get("x-ikas-hmac-sha256");
-  if (!signature) return false;
-
-  const expected = createHmac("sha256", process.env.CLIENT_SECRET!)
-    .update(rawBody, "utf8")
-    .digest("base64");
-
-  return signature === expected;
-}
+import { db } from "@/lib/db";
+import { syncOneProduct } from "@/lib/product-sync";
+import { AuthTokenManager } from "@/lib/ikas-client/token-manager";
+import { validateHmac } from "./hmac";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -20,18 +12,42 @@ export async function POST(req: NextRequest) {
   }
 
   const topic = req.headers.get("x-ikas-topic");
-  const payload = JSON.parse(rawBody);
+  const payload = JSON.parse(rawBody) as { id?: string };
 
-  // Route by topic
   switch (topic) {
-    case "app/uninstalled":
-      // TODO: clean up AuthToken for the store
-      console.log("[webhook] app uninstalled:", payload);
+    case "product/created":
+    case "product/updated": {
+      const productId = payload.id;
+      if (!productId) break;
+      const merchant = await db.merchant.findFirst({ select: { storeName: true } });
+      if (!merchant) break;
+      const accessToken = await AuthTokenManager.refreshIfExpired(merchant.storeName);
+      if (!accessToken) break;
+      syncOneProduct(merchant.storeName, productId, accessToken).catch((err) =>
+        console.error(`[webhook] ${topic} sync failed:`, err)
+      );
       break;
-    case "product/updated":
-      // TODO: invalidate product readiness cache
-      console.log("[webhook] product updated:", payload);
+    }
+
+    case "product/deleted": {
+      const productId = payload.id;
+      if (productId) {
+        await db.product.deleteMany({ where: { id: productId } }).catch(() => null);
+      }
       break;
+    }
+
+    case "app/uninstalled": {
+      const merchant = await db.merchant.findFirst({ select: { storeName: true } });
+      if (merchant) {
+        const { storeName } = merchant;
+        await db.product.deleteMany({ where: { storeName } });
+        await db.authToken.deleteMany({ where: { store: storeName } });
+        await db.merchant.delete({ where: { storeName } });
+      }
+      break;
+    }
+
     default:
       console.log("[webhook] unhandled topic:", topic);
   }

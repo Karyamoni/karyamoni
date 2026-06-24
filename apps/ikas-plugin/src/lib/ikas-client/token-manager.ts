@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { OAuthAPI } from "@ikas/admin-api-client";
 
 interface TokenSet {
   accessToken: string;
@@ -19,26 +20,24 @@ export const AuthTokenManager = {
     });
   },
 
-  async refreshIfExpired(store: string): Promise<string | null> {
-    const record = await db.authToken.findUnique({ where: { store } });
+  async refreshIfExpired(storeName: string): Promise<string | null> {
+    const record = await db.authToken.findUnique({ where: { store: storeName } });
     if (!record) return null;
 
     if (record.expiresAt > new Date()) return record.accessToken;
 
-    // Token expired — refresh
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_ADMIN_URL}/oauth/token`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-          client_secret: process.env.CLIENT_SECRET!,
-          refresh_token: record.refreshToken,
-        }),
-      }
-    );
+    // Store-specific token endpoint — `store` column is always storeName
+    const oauthBaseUrl = OAuthAPI.getOAuthUrl({ storeName });
+    const res = await fetch(`${oauthBaseUrl}/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
+        client_secret: process.env.CLIENT_SECRET!,
+        refresh_token: record.refreshToken,
+      }),
+    });
 
     if (!res.ok) return null;
 
@@ -49,7 +48,7 @@ export const AuthTokenManager = {
     };
 
     const expiresAt = new Date(Date.now() + data.expires_in * 1000);
-    await AuthTokenManager.saveToken(store, {
+    await AuthTokenManager.saveToken(storeName, {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt,

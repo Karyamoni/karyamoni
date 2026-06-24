@@ -78,16 +78,27 @@ function RailRow({
 
 export function IKASIntegrationRail() {
   const [rail, setRail] = useState<RailState>({
-    permission: "connected",
-    productSync: "connected",
+    permission: "pending",
+    productSync: "pending",
     returnData: "pending",
-    lastSyncAt: new Date(),
+    lastSyncAt: null,
   });
 
-  // In production: subscribe to @ikas/app-bridge events for real-time updates
   useEffect(() => {
-    // Placeholder for app-bridge event subscription
-    // bridge.on('permission:update', (data) => setRail(prev => ({ ...prev, permission: data.status })))
+    fetch("/api/ikas/products", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        const hasProducts = (data.products?.length ?? 0) > 0;
+        setRail({
+          permission: "connected",
+          productSync: hasProducts ? "connected" : "pending",
+          returnData: "pending",
+          lastSyncAt: new Date(),
+        });
+      })
+      .catch(() => {
+        setRail((prev) => ({ ...prev, permission: "error" }));
+      });
   }, []);
 
   const formatSync = (d: Date | null) => {

@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ["*.myikas.com", "*.trycloudflare.com"],
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "cdn.myikas.com" }],
+  },
   // IKAS embedded app runs inside iframe — disable X-Frame-Options
   async headers() {
     return [

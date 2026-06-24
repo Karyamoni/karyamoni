@@ -1,39 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { OAuthAPI } from "@ikas/admin-api-client";
 import { AuthTokenManager } from "@/lib/ikas-client/token-manager";
+import { getIkas } from "@/lib/ikas-client";
+import { print } from "graphql";
+import { GET_MERCHANT } from "@/lib/ikas-client/graphql-requests";
+import { db } from "@/lib/db";
+import { syncAllProducts } from "@/lib/product-sync";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const store = searchParams.get("store");
 
-  if (!code || !state || !store) {
+  if (!code || !state) {
     return NextResponse.json({ error: "Missing required params" }, { status: 400 });
   }
 
   const session = await getSession();
 
-  // CSRF validation
   if (session.oauthState !== state) {
     return NextResponse.json({ error: "Invalid state" }, { status: 403 });
   }
 
-  // Exchange authorization code for tokens
-  const tokenRes = await fetch(
-    `${process.env.NEXT_PUBLIC_ADMIN_URL}/oauth/token`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-        client_secret: process.env.CLIENT_SECRET!,
-        code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_DEPLOY_URL}/api/oauth/callback/ikas`,
-      }),
-    }
-  );
+  // storeName was saved to session during /api/oauth/authorize/ikas
+  const storeName = session.store;
+  if (!storeName) {
+    return NextResponse.json({ error: "Session missing store" }, { status: 400 });
+  }
+
+  // Store-specific token endpoint — matches authorize URL construction
+  const oauthBaseUrl = OAuthAPI.getOAuthUrl({ storeName });
+  const tokenRes = await fetch(`${oauthBaseUrl}/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
+      client_secret: process.env.CLIENT_SECRET!,
+      code,
+      redirect_uri: `${process.env.NEXT_PUBLIC_DEPLOY_URL}/api/oauth/callback/ikas`,
+    }),
+  });
 
   if (!tokenRes.ok) {
     const err = await tokenRes.text();
@@ -49,18 +57,61 @@ export async function GET(req: NextRequest) {
 
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
-  await AuthTokenManager.saveToken(store, {
+  // Merchant must exist before AuthToken (FK: AuthToken.store → Merchant.storeName)
+  await db.merchant.upsert({
+    where: { storeName },
+    create: { storeName, name: storeName, email: "", storeUrl: "" },
+    update: {},
+  });
+
+  await AuthTokenManager.saveToken(storeName, {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     expiresAt,
   });
 
-  session.store = store;
-  // jwt comes from @ikas/app-bridge in the embedded iframe, not from OAuth
+  // Fetch real merchant info and update
+  try {
+    const client = getIkas(tokens.access_token);
+    const result = await client.query<{
+      getMerchant: { id: string; merchantName: string; email: string; storeName: string };
+    }>({ query: print(GET_MERCHANT) });
+
+    if (result.isSuccess && result.data?.getMerchant) {
+      const { id: merchantCdnId, merchantName, email } = result.data.getMerchant;
+      await db.merchant.update({
+        where: { storeName },
+        data: { name: merchantName, email, merchantCdnId },
+      });
+    }
+  } catch (err) {
+    console.error("[OAuth callback] merchant fetch failed:", err);
+  }
+
+  // Initial product sync — fire and forget (don't block OAuth redirect)
+  syncAllProducts(storeName, tokens.access_token).catch((err) =>
+    console.error("[OAuth callback] initial product sync failed:", err)
+  );
+
+  // If install was initiated from web app, link this store to the web app user
+  if (session.linkToken && process.env.WEB_APP_URL && process.env.LINK_STORE_SECRET) {
+    try {
+      await fetch(`${process.env.WEB_APP_URL}/api/ikas/link-store/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-link-secret": process.env.LINK_STORE_SECRET,
+        },
+        body: JSON.stringify({ storeName, linkToken: session.linkToken }),
+      });
+    } catch (err) {
+      console.error("[OAuth callback] web app link failed:", err);
+    }
+    delete session.linkToken;
+  }
+
   delete session.oauthState;
   await session.save();
 
-  return NextResponse.redirect(
-    new URL("/dashboard", process.env.NEXT_PUBLIC_DEPLOY_URL)
-  );
+  return NextResponse.redirect(new URL("/dashboard", process.env.NEXT_PUBLIC_DEPLOY_URL));
 }

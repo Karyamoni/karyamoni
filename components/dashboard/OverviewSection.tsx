@@ -1,27 +1,31 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, Store } from "lucide-react";
+import { ArrowUpRight, Store, AlertCircle } from "lucide-react";
 import { makeAnim, EASE } from "@/components/dashboard/anim";
 import type { CurrentUser } from "@/lib/session";
 import type { SiteContent } from "@/lib/content";
 
+type ConnectedStore = { name: string; installStatus: string } | null;
+
 type Props = {
   content: SiteContent;
   user: CurrentUser;
+  store?: ConnectedStore;
 };
 
 const METRICS = [
-  { label: "Profile completion", value: "71%", delay: 0.42 },
-  { label: "Add-to-cart lift", value: "+12%", delay: 0.48 },
-  { label: "Size returns baseline", value: "23%", delay: 0.54 },
-  { label: "Pilot target", value: "18%", delay: 0.6 }
+  { label: "Profile completion", value: "—", delay: 0.42 },
+  { label: "Add-to-cart lift", value: "—", delay: 0.48 },
+  { label: "Size returns baseline", value: "—", delay: 0.54 },
+  { label: "Pilot target", value: "—", delay: 0.6 }
 ];
 
-export function OverviewSection({ content, user }: Props) {
+export function OverviewSection({ content, user, store }: Props) {
   const reduced = useReducedMotion();
   const anim = makeAnim(reduced);
   const identity = user.email ?? user.phone ?? "";
+  const ikasConnected = store?.installStatus === "connected";
 
   return (
     <div className="bg-[var(--color-paper)] text-[var(--color-ink)]">
@@ -36,25 +40,46 @@ export function OverviewSection({ content, user }: Props) {
           <div className="col-span-3 flex items-center gap-3 md:col-span-5 lg:col-span-7">
             <Store size={15} aria-hidden className="shrink-0 opacity-60" />
             <span className="k-label hidden text-white/60 sm:inline">IKAS</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-lime" aria-hidden />
-              <span className="k-label text-lime">Connected</span>
-            </span>
-            <span className="k-label hidden text-white/25 md:inline">·</span>
-            <span className="k-label hidden text-white/50 md:inline">4/4 permissions</span>
-            <span className="k-label hidden text-white/25 lg:inline">·</span>
-            <span className="k-label hidden text-white/40 lg:inline">Last sync 2 min ago</span>
+            {ikasConnected ? (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-lime" aria-hidden />
+                  <span className="k-label text-lime">Connected</span>
+                </span>
+                {store?.name && (
+                  <>
+                    <span className="k-label hidden text-white/25 md:inline">·</span>
+                    <span className="k-label hidden text-white/50 md:inline">{store.name}.myikas.com</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <AlertCircle size={12} className="text-coral" aria-hidden />
+                <span className="k-label text-coral">Not connected</span>
+              </span>
+            )}
           </div>
           <div className="col-span-1 flex justify-end md:col-span-3 lg:col-span-5">
-            <a
-              href="https://ikas.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="k-label flex items-center gap-1 text-white/40 transition-colors duration-300 hover:text-white"
-            >
-              <span className="hidden md:inline">Open IKAS</span>
-              <ArrowUpRight size={14} aria-hidden />
-            </a>
+            {ikasConnected ? (
+              <a
+                href="https://ikas.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="k-label flex items-center gap-1 text-white/40 transition-colors duration-300 hover:text-white"
+              >
+                <span className="hidden md:inline">Open IKAS</span>
+                <ArrowUpRight size={14} aria-hidden />
+              </a>
+            ) : (
+              <a
+                href="setup"
+                className="k-label flex items-center gap-1 text-coral transition-colors duration-300 hover:text-white"
+              >
+                <span className="hidden md:inline">Connect store</span>
+                <ArrowUpRight size={14} aria-hidden />
+              </a>
+            )}
           </div>
         </div>
       </motion.div>
@@ -75,14 +100,14 @@ export function OverviewSection({ content, user }: Props) {
             </motion.p>
             <motion.div {...anim(0.18, "slideRight")}>
               <span
-                className="block font-black uppercase text-[var(--color-ink)]"
+                className="block font-black uppercase text-[var(--color-ink-soft)]"
                 style={{ fontSize: "clamp(5.5rem, 22vw, 20rem)", letterSpacing: "-0.06em", lineHeight: 0.84 }}
               >
-                −18%
+                —
               </span>
             </motion.div>
-            <motion.p className="k-body mt-5 max-w-xs text-[15px] leading-relaxed" {...anim(0.42, "slideLeft")}>
-              Return rate reduction since pilot — baseline was 23%
+            <motion.p className="k-body mt-5 max-w-xs text-[15px] leading-relaxed text-[var(--color-ink-soft)]" {...anim(0.42, "slideLeft")}>
+              Return impact data will appear once return tracking is connected
             </motion.p>
           </div>
 
@@ -93,10 +118,10 @@ export function OverviewSection({ content, user }: Props) {
             <div>
               <p className="k-label mb-2 text-[var(--color-ink-soft)]">{content.dashboard.metrics}</p>
               <span
-                className="block font-black uppercase text-[var(--color-ink)]"
+                className="block font-black uppercase text-[var(--color-ink-soft)]"
                 style={{ fontSize: "clamp(3rem, 9vw, 7rem)", letterSpacing: "-0.04em", lineHeight: 0.9 }}
               >
-                1,248
+                —
               </span>
               <p className="k-label mt-2 text-[var(--color-ink-soft)]">total try-ons</p>
             </div>
