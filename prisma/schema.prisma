@@ -92,6 +92,7 @@ model DashboardStore {
   installStatus     String             @default("not_connected")
   permissionStatus  String             @default("pending")
   activationStatus  String             @default("draft")
+  accessToken       String?            @unique
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   merchantProfile   MerchantProfile    @relation(fields: [merchantProfileId], references: [id], onDelete: Cascade)

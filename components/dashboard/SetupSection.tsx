@@ -64,12 +64,12 @@ export function SetupSection({ content, store }: Props) {
                   )}
 
                   {ikas && done && store && (
-                    <motion.p
-                      className="k-label mt-2 text-[var(--color-ink-soft)]"
-                      {...anim(d + 0.08, "fadeIn")}
-                    >
-                      {store.name}.myikas.com
-                    </motion.p>
+                    <motion.div className="mt-2 flex flex-col gap-2" {...anim(d + 0.08, "fadeIn")}>
+                      <p className="k-label text-[var(--color-ink-soft)]">
+                        {store.name}.myikas.com
+                      </p>
+                      <IkasConnectForm storeName={store.name} reconnect />
+                    </motion.div>
                   )}
                 </div>
 

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,29 +20,45 @@ model AuthToken {
 
 model Merchant {
   id            String    @id @default(cuid())
-  storeName     String    @unique
-  merchantCdnId String?
-  name          String
-  email         String
-  storeUrl      String
-  createdAt     DateTime  @default(now())
+  storeName            String    @unique
+  merchantCdnId        String?
+  karyamoniAccessToken String?
+  name                 String
+  email                String
+  storeUrl             String
+  createdAt            DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   token         AuthToken?
   products      Product[]
 }
 
 model Product {
-  id             String   @id
+  id             String               @id
   storeName      String
   name           String
   categoryName   String?
+  garmentType    String?              // auto-detected: "tops"|"bottoms"|"dresses"|"skirts"|"outerwear"|"shoes"|"caps"|"accessories"
   imageId        String?
+  imageIds       String?              // JSON array of all variant imageIds
   modelUrl       String?
-  variantCount   Int      @default(0)
-  state          String   @default("missing")
-  readinessScore Int      @default(0)
+  variantCount   Int                  @default(0)
+  state          String               @default("missing")
+  readinessScore Int                  @default(0)
   missingFields  String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  merchant       Merchant @relation(fields: [storeName], references: [storeName], onDelete: Cascade)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  merchant       Merchant             @relation(fields: [storeName], references: [storeName], onDelete: Cascade)
+  sizeChart      ProductSizeChart[]
+}
+
+model ProductSizeChart {
+  id           String   @id @default(cuid())
+  productId    String
+  size         String   // "XS" | "S" | "M" | "L" | "XL" | "XXL" | custom (e.g. "42", "2XL")
+  measurements String   // JSON: { "chest": {"min":88,"max":92}, "waist": {"min":68,"max":72} }
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, size])
 }

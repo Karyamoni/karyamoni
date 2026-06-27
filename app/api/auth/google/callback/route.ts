@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     ?.split("=")[1];
 
   if (!code || !state || !savedState || state !== decodeURIComponent(savedState)) {
-    return NextResponse.redirect(new URL("/tr/login?error=google_state", request.url));
+    return NextResponse.redirect(new URL("/tr/login?error=google_state", appUrl(request)));
   }
 
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   const token = (await tokenResponse.json()) as GoogleTokenResponse;
 
   if (!tokenResponse.ok || !token.access_token) {
-    return NextResponse.redirect(new URL("/tr/login?error=google_token", request.url));
+    return NextResponse.redirect(new URL("/tr/login?error=google_token", appUrl(request)));
   }
 
   const profileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
   const profile = (await profileResponse.json()) as GoogleProfile;
 
   if (!profileResponse.ok || !profile.email) {
-    return NextResponse.redirect(new URL("/tr/login?error=google_profile", request.url));
+    return NextResponse.redirect(new URL("/tr/login?error=google_profile", appUrl(request)));
   }
 
   const userId = await upsertUser({
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
   if (mfa.enabled) {
     const locale = await getLocaleForUser(userId);
     const pendingToken = await createMfaPendingToken(userId, ip);
-    const dest = new URL(`/${locale}/mfa-challenge`, request.url);
+    const dest = new URL(`/${locale}/mfa-challenge`, appUrl(request));
     dest.searchParams.set("t", pendingToken);
     if (next) dest.searchParams.set("next", next);
     const response = NextResponse.redirect(dest);
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
 
   const rawToken = await createSession(userId, ip);
   const response = NextResponse.redirect(
-    new URL(next ? decodeURIComponent(next) : "/tr/dashboard", request.url)
+    new URL(next ? decodeURIComponent(next) : "/tr/dashboard", appUrl(request))
   );
   response.cookies.set(cookieName, rawToken, {
     httpOnly: true,

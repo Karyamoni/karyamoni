@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
@@ -32,10 +33,12 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
 
+  const rawToken = randomBytes(32).toString("hex");
+
   if (existing) {
     await db.dashboardStore.update({
       where: { id: existing.id },
-      data: { installStatus: "connected", permissionStatus: "granted" },
+      data: { installStatus: "connected", permissionStatus: "granted", accessToken: rawToken },
     });
   } else {
     await db.dashboardStore.create({
@@ -45,9 +48,10 @@ export async function POST(req: NextRequest) {
         platform: "ikas",
         installStatus: "connected",
         permissionStatus: "granted",
+        accessToken: rawToken,
       },
     });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, storeAccessToken: rawToken });
 }

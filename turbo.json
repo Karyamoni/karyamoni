@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "tunnel": {
+      "cache": false,
+      "persistent": true
+    },
+    "tunnel:plugin": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

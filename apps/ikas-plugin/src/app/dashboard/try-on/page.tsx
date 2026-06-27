@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { ThreeCabinetViewer } from "@/components/cabin/ThreeCabinetViewer";
+import type { SizeChartEntry, MeasurementRange } from "@/components/cabin/useCabinStore";
+import { detectGarmentType, type GarmentType } from "@/lib/garment-types";
 
 type SearchParams = Promise<{ productId?: string; garmentUrl?: string }>;
 
@@ -8,21 +10,65 @@ export default async function TryOnPage({ searchParams }: { searchParams: Search
 
   const DEMO_GARMENT = "/models/renomowana_hurtownia_wysokiej_jakosci/scene.gltf";
 
-  // Resolve garment URL: direct param (dev/test) or from DB product
   let garmentUrl: string | null = rawGarmentUrl ?? null;
   let productName: string | null = null;
+  let productImages: string[] = [];
+  let sizeChart: SizeChartEntry[] = [];
+  let garmentType: GarmentType | null = null;
 
-  if (!garmentUrl && productId) {
+  if (productId) {
     const product = await db.product.findUnique({
       where: { id: productId },
-      select: { modelUrl: true, name: true },
+      select: {
+        modelUrl: true,
+        name: true,
+        categoryName: true,
+        garmentType: true,
+        imageId: true,
+        imageIds: true,
+        storeName: true,
+        sizeChart: {
+          select: { size: true, measurements: true },
+          orderBy: { size: "asc" },
+        },
+      },
     });
-    garmentUrl = product?.modelUrl ?? null;
-    productName = product?.name ?? null;
+
+    if (product) {
+      if (!garmentUrl) garmentUrl = product.modelUrl ?? null;
+      productName = product.name;
+
+      // Build CDN URLs for all product images
+      const merchant = await db.merchant.findUnique({
+        where: { storeName: product.storeName },
+        select: { merchantCdnId: true },
+      });
+
+      const cdnId = merchant?.merchantCdnId;
+      if (cdnId) {
+        const allImageIds: string[] = product.imageIds
+          ? (JSON.parse(product.imageIds) as string[])
+          : product.imageId
+            ? [product.imageId]
+            : [];
+
+        productImages = allImageIds.map(
+          (imgId) => `https://cdn.myikas.com/images/${cdnId}/${imgId}/image_720.webp`
+        );
+      }
+
+      garmentType = (product.garmentType as GarmentType) ??
+        (product.categoryName ? detectGarmentType(product.categoryName) : null);
+
+      sizeChart = product.sizeChart.map((e) => ({
+        size: e.size,
+        measurements: JSON.parse(e.measurements) as Record<string, MeasurementRange>,
+      }));
+    }
   }
 
-  // Fallback: always show demo garment so the cabin is never empty
-  if (!garmentUrl) garmentUrl = DEMO_GARMENT;
+  // Fallback: show demo garment if no 3D model and no product images
+  if (!garmentUrl && productImages.length === 0) garmentUrl = DEMO_GARMENT;
 
   return (
     <main
@@ -35,7 +81,7 @@ export default async function TryOnPage({ searchParams }: { searchParams: Search
         overflow: "hidden",
       }}
     >
-      {/* Nav strip — asymmetric power line */}
+      {/* Nav strip */}
       <nav
         style={{
           display: "grid",
@@ -46,7 +92,6 @@ export default async function TryOnPage({ searchParams }: { searchParams: Search
           flexShrink: 0,
         }}
       >
-        {/* Logo — col 1 */}
         <div style={{ gridColumn: "1", display: "flex", alignItems: "center" }}>
           <span
             style={{
@@ -61,7 +106,6 @@ export default async function TryOnPage({ searchParams }: { searchParams: Search
           </span>
         </div>
 
-        {/* Product name — col 4–9 (asymmetric offset) */}
         {productName && (
           <div
             style={{
@@ -95,8 +139,7 @@ export default async function TryOnPage({ searchParams }: { searchParams: Search
           </div>
         )}
 
-        {/* No model notice — col 10–12 */}
-        {!garmentUrl && productId && (
+        {productImages.length === 0 && !garmentUrl && productId && (
           <div
             style={{
               gridColumn: "10 / 13",
@@ -113,15 +156,19 @@ export default async function TryOnPage({ searchParams }: { searchParams: Search
                 color: "var(--cabin-accent-alt, var(--coral))",
               }}
             >
-              No 3D model
+              No images
             </span>
           </div>
         )}
       </nav>
 
-      {/* Cabin — fills remaining height */}
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <ThreeCabinetViewer garmentUrl={garmentUrl} />
+        <ThreeCabinetViewer
+          garmentUrl={garmentUrl}
+          productImages={productImages}
+          sizeChart={sizeChart}
+          garmentType={garmentType}
+        />
       </div>
     </main>
   );

@@ -23,20 +23,30 @@ export default async function ProductsPage({ params }: Props) {
   const isConnected = profile?.stores[0]?.installStatus === "connected";
 
   let products: Product[] = [];
+  let pluginError: string | undefined;
   if (isConnected) {
     const pluginUrl = process.env.IKAS_PLUGIN_URL;
-    if (pluginUrl) {
+    if (!pluginUrl) {
+      pluginError = "IKAS_PLUGIN_URL not configured";
+    } else {
       try {
         const res = await fetch(`${pluginUrl}/api/ikas/products`, {
-          headers: { "x-link-secret": process.env.LINK_STORE_SECRET ?? "" },
+          headers: profile?.stores[0]?.accessToken
+            ? { Authorization: `Bearer ${profile.stores[0].accessToken}` }
+            : {},
           cache: "no-store",
         });
         if (res.ok) {
           const data = await res.json();
           products = data.products ?? [];
+        } else {
+          const body = await res.text();
+          pluginError = `Plugin error ${res.status}: ${body}`;
+          console.error("[ProductsPage] plugin fetch failed:", res.status, body);
         }
-      } catch {
-        // plugin offline
+      } catch (err) {
+        pluginError = "Plugin unreachable";
+        console.error("[ProductsPage] plugin unreachable:", err);
       }
     }
   }
@@ -47,6 +57,7 @@ export default async function ProductsPage({ params }: Props) {
       products={products}
       isConnected={isConnected}
       ikasPluginUrl={process.env.IKAS_PLUGIN_URL ?? null}
+      pluginError={pluginError}
     />
   );
 }

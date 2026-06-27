@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
   // If install was initiated from web app, link this store to the web app user
   if (session.linkToken && process.env.WEB_APP_URL && process.env.LINK_STORE_SECRET) {
     try {
-      await fetch(`${process.env.WEB_APP_URL}/api/ikas/link-store/confirm`, {
+      const linkRes = await fetch(`${process.env.WEB_APP_URL}/api/ikas/link-store/confirm`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,6 +104,15 @@ export async function GET(req: NextRequest) {
         },
         body: JSON.stringify({ storeName, linkToken: session.linkToken }),
       });
+      if (linkRes.ok) {
+        const linkData = await linkRes.json() as { ok: boolean; storeAccessToken?: string };
+        if (linkData.storeAccessToken) {
+          await db.merchant.update({
+            where: { storeName },
+            data: { karyamoniAccessToken: linkData.storeAccessToken },
+          });
+        }
+      }
     } catch (err) {
       console.error("[OAuth callback] web app link failed:", err);
     }

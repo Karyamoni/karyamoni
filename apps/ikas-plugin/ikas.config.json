@@ -1,6 +1,6 @@
 {
   "portMapping": {
-    "default": 3000
+    "default": 3001
   },
   "oauthRedirectPath": "/api/oauth/callback/ikas",
   "actions": []

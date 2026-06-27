@@ -1,15 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw } from "lucide-react";
 
-export function IkasConnectForm() {
-  const [storeName, setStoreName] = useState("");
+type Props = {
+  storeName?: string;
+  reconnect?: boolean;
+};
+
+export function IkasConnectForm({ storeName: prefill, reconnect }: Props) {
+  const [storeName, setStoreName] = useState(prefill ?? "");
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     if (!storeName.trim()) { e.preventDefault(); return; }
     setLoading(true);
+  }
+
+  if (reconnect && !open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="k-label flex items-center gap-1.5 text-[var(--color-ink-soft)] underline hover:text-[var(--color-ink)]"
+      >
+        <RefreshCw size={11} />
+        Reconnect
+      </button>
+    );
   }
 
   return (
@@ -50,7 +68,7 @@ export function IkasConnectForm() {
         ) : (
           <ArrowRight size={14} aria-hidden />
         )}
-        Connect
+        {reconnect ? "Reconnect" : "Connect"}
       </button>
     </form>
   );

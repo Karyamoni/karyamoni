@@ -4,7 +4,8 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true
+  reactStrictMode: true,
+  allowedDevOrigins: ["staging.karyamoni.com", "app.karyamoni.com", "plugin.karyamoni.com"]
 };
 
 export default withNextIntl(nextConfig);

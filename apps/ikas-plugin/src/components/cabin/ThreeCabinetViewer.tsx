@@ -1,16 +1,17 @@
 "use client";
 
-import { Component, Suspense, useCallback, useRef, useState, type ReactNode } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Component, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { VRM } from "@pixiv/three-vrm";
-import { CabinProvider, useCabinStore } from "./useCabinStore";
+import { CabinProvider, useCabinStore, type SizeChartEntry } from "./useCabinStore";
+import type { GarmentType } from "@/lib/garment-types";
 import { CabinEnvironment } from "./CabinEnvironment";
 import { AvatarRig } from "./AvatarRig";
 import { ClothLayer } from "./ClothLayer";
 import { BodyMesh, MODEL_BASE } from "./StaticBodyRig";
-import { GarmentMesh } from "./StaticGarmentFit";
+import { ClothingImagePlane } from "./ClothingImagePlane";
 import { ProceduralAvatar } from "./ProceduralAvatar";
 import { CabinHUD } from "./CabinHUD";
 
@@ -24,14 +25,36 @@ class AvatarErrorBoundary extends Component<{ children: ReactNode; fallback: Rea
   }
 }
 
-// ── Static GLTF scene — shared parent group owns all transforms ────────────────
+// ── Camera controller — flips Z position for back view ────────────────────────
+function CameraController() {
+  const { state } = useCabinStore();
+  const { camera } = useThree();
+  const targetZRef = useRef(2.8);
+
+  useEffect(() => {
+    targetZRef.current = state.viewMode === "back" ? -2.8 : 2.8;
+  }, [state.viewMode]);
+
+  useFrame(() => {
+    const pos = camera.position;
+    const targetZ = targetZRef.current;
+    if (Math.abs(pos.z - targetZ) > 0.01) {
+      pos.z += (targetZ - pos.z) * 0.08;
+      camera.lookAt(0, 0.2, 0);
+    }
+  });
+
+  return null;
+}
+
+// ── Static GLTF scene — body + 2.5D clothing overlay ──────────────────────────
 function StaticScene() {
   const { state } = useCabinStore();
-  const { avatarUrl, measurements, garmentUrl } = state;
+  const { avatarUrl, measurements, productImages, activeImageIndex } = state;
   const swayRef = useRef<THREE.Group>(null);
 
-  // Height scales the whole group; X/Z are handled per-vertex in BodyMesh
   const scaleY = measurements.height / MODEL_BASE.height;
+  const activeImage = productImages[activeImageIndex] ?? null;
 
   useFrame(({ clock }) => {
     if (swayRef.current) {
@@ -40,15 +63,14 @@ function StaticScene() {
   });
 
   return (
-    // Shared parent: body + garment inherit position and Y-scale together
     <group ref={swayRef} position={[0, -1, 0]} scale={[1, scaleY, 1]}>
       <Suspense fallback={null}>
         <BodyMesh url={avatarUrl} measurements={measurements} />
       </Suspense>
-      {garmentUrl && (
+      {activeImage && (
         <AvatarErrorBoundary fallback={null}>
           <Suspense fallback={null}>
-            <GarmentMesh url={garmentUrl} />
+            <ClothingImagePlane imageUrl={activeImage} bodyScaleY={scaleY} />
           </Suspense>
         </AvatarErrorBoundary>
       )}
@@ -89,7 +111,7 @@ function ProceduralScene() {
 function getAvatarMode(url: string): "vrm" | "gltf" | "none" {
   if (!url) return "none";
   if (url.endsWith(".vrm")) return "vrm";
-  return "gltf"; // .gltf / .glb / anything else
+  return "gltf";
 }
 
 // ── Full scene graph ───────────────────────────────────────────────────────────
@@ -100,6 +122,7 @@ function Scene() {
   return (
     <>
       <CabinEnvironment />
+      <CameraController />
 
       {mode === "gltf" && (
         <AvatarErrorBoundary fallback={<ProceduralScene />}>
@@ -169,18 +192,123 @@ function AvatarBadge({ mode }: { mode: "vrm" | "gltf" | "none" }) {
   );
 }
 
+// ── Front / Back view toggle overlay ──────────────────────────────────────────
+function ViewToggle() {
+  const { state, setViewMode, setActiveImage } = useCabinStore();
+  const { viewMode, productImages, activeImageIndex } = state;
+
+  if (productImages.length < 2) return null;
+
+  const frontIdx = 0;
+  const backIdx = Math.min(1, productImages.length - 1);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 20,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 20,
+        display: "flex",
+        gap: "4px",
+      }}
+    >
+      {(["front", "back"] as const).map((v, i) => {
+        const active = viewMode === v;
+        const imgIdx = i === 0 ? frontIdx : backIdx;
+        return (
+          <button
+            key={v}
+            onClick={() => {
+              setViewMode(v);
+              setActiveImage(imgIdx);
+            }}
+            style={{
+              padding: "6px 14px",
+              borderRadius: "2px",
+              border: active ? "1px solid var(--cabin-accent)" : "1px solid rgba(250,250,249,0.15)",
+              background: active ? "rgba(190,255,92,0.12)" : "rgba(10,10,10,0.6)",
+              color: active ? "var(--cabin-accent)" : "rgba(250,250,249,0.5)",
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              backdropFilter: "blur(8px)",
+              transition: "all 0.15s ease",
+            }}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Image thumbnail strip ──────────────────────────────────────────────────────
+function ThumbnailStrip() {
+  const { state, setActiveImage } = useCabinStore();
+  const { productImages, activeImageIndex } = state;
+
+  if (productImages.length <= 2) return null;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 60,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 20,
+        display: "flex",
+        gap: "4px",
+      }}
+    >
+      {productImages.map((url, i) => (
+        <button
+          key={url}
+          onClick={() => setActiveImage(i)}
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "2px",
+            border: i === activeImageIndex ? "1px solid var(--cabin-accent)" : "1px solid rgba(250,250,249,0.15)",
+            overflow: "hidden",
+            padding: 0,
+            cursor: "pointer",
+            opacity: i === activeImageIndex ? 1 : 0.6,
+            transition: "opacity 0.15s ease",
+          }}
+        >
+          <img src={url} alt={`View ${i + 1}`} width={36} height={36} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Public component ───────────────────────────────────────────────────────────
 type Props = {
   garmentUrl?: string | null;
+  productImages?: string[];
+  sizeChart?: SizeChartEntry[];
+  garmentType?: GarmentType | null;
   className?: string;
 };
 
-export function ThreeCabinetViewer({ garmentUrl, className }: Props) {
+export function ThreeCabinetViewer({ garmentUrl, productImages, sizeChart, garmentType, className }: Props) {
   const avatarUrl = process.env.NEXT_PUBLIC_AVATAR_VRM_URL ?? "";
   const mode = getAvatarMode(avatarUrl);
 
   return (
-    <CabinProvider initialGarmentUrl={garmentUrl}>
+    <CabinProvider
+      initialGarmentUrl={garmentUrl}
+      initialProductImages={productImages}
+      initialSizeChart={sizeChart}
+      initialGarmentType={garmentType}
+    >
       <div
         className={className}
         style={{
@@ -195,7 +323,7 @@ export function ThreeCabinetViewer({ garmentUrl, className }: Props) {
         <CabinHUD />
 
         <div style={{ flex: 1, position: "relative" }}>
-          {/* Monumental ghosted headline — asymmetric col 2 offset */}
+          {/* Monumental ghosted headline */}
           <div
             style={{
               position: "absolute",
@@ -235,6 +363,8 @@ export function ThreeCabinetViewer({ garmentUrl, className }: Props) {
             </Suspense>
           </Canvas>
 
+          <ViewToggle />
+          <ThumbnailStrip />
           <AvatarBadge mode={mode} />
         </div>
       </div>

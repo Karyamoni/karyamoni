@@ -1,0 +1,13 @@
+procs:
+  main:
+    cmd: ["pnpm", "dev"]
+  plugin:
+    cmd: ["pnpm", "--filter", "karyamoni-ikas-plugin", "dev"]
+  tunnel:
+    shell: "cloudflared tunnel --config ~/.cloudflared/config.yml run"
+  tunnel-plugin:
+    shell: "cloudflared tunnel --config ~/.cloudflared/config-plugin.yml run"
+  studio-main:
+    cmd: ["pnpm", "studio"]
+  studio-plugin:
+    cmd: ["pnpm", "studio:plugin"]

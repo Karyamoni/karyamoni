@@ -13,9 +13,10 @@ type Props = {
   products: Product[];
   isConnected: boolean;
   ikasPluginUrl?: string | null;
+  pluginError?: string;
 };
 
-export function ProductsSection({ content, products, isConnected, ikasPluginUrl }: Props) {
+export function ProductsSection({ content, products, isConnected, ikasPluginUrl, pluginError }: Props) {
   const reduced = useReducedMotion();
   const anim = makeAnim(reduced);
 
@@ -37,6 +38,12 @@ export function ProductsSection({ content, products, isConnected, ikasPluginUrl 
             </motion.div>
           )}
         </div>
+
+        {pluginError && (
+          <div className="col-span-4 mb-4 rounded border border-coral/30 bg-coral/10 px-4 py-3 md:col-span-8 lg:col-span-12">
+            <p className="k-label text-coral">{pluginError}</p>
+          </div>
+        )}
 
         <div className="col-span-4 border-t border-[var(--color-ink-faint)] md:col-span-8 lg:col-span-12">
           {!isConnected ? (

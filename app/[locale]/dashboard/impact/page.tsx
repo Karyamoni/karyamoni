@@ -26,15 +26,20 @@ export default async function ImpactPage({ params }: Props) {
     if (pluginUrl) {
       try {
         const res = await fetch(`${pluginUrl}/api/ikas/products`, {
-          headers: { "x-link-secret": process.env.LINK_STORE_SECRET ?? "" },
+          headers: profile?.stores[0]?.accessToken
+            ? { Authorization: `Bearer ${profile.stores[0].accessToken}` }
+            : {},
           cache: "no-store",
         });
         if (res.ok) {
           const data = await res.json();
           productCount = data.products?.length ?? 0;
+        } else {
+          const body = await res.text();
+          console.error("[ImpactPage] plugin fetch failed:", res.status, body);
         }
-      } catch {
-        // plugin offline
+      } catch (err) {
+        console.error("[ImpactPage] plugin unreachable:", err);
       }
     }
   }

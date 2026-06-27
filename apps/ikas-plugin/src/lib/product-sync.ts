@@ -2,6 +2,7 @@ import { getIkas } from "@/lib/ikas-client";
 import { print } from "graphql";
 import { LIST_PRODUCTS, GET_PRODUCT } from "@/lib/ikas-client/graphql-requests";
 import { db } from "@/lib/db";
+import { detectGarmentType } from "@/lib/garment-types";
 
 type RawImage = { imageId: string; isMain: boolean; order: number };
 type RawNode = {
@@ -9,14 +10,15 @@ type RawNode = {
   name: string;
   categories?: Array<{ id: string; name: string }>;
   variants?: Array<{ id: string; sku: string | null; images?: RawImage[] }>;
-  attributes?: Array<{ attributeId: string; value: string | null }>;
 };
 
 export type ScoredProduct = {
   id: string;
   name: string;
   categoryName: string | null;
+  garmentType: string | null;
   imageId: string | null;
+  imageIds: string[] | null;
   modelUrl: string | null;
   variantCount: number;
   state: "live" | "ready" | "missing";
@@ -24,10 +26,10 @@ export type ScoredProduct = {
   missingFields: string[] | null;
 };
 
-const MODEL_ATTRIBUTE_ID = "3d_model_url";
 
 export function computeProductState(node: RawNode, existingModelUrl?: string | null): ScoredProduct {
   const categoryName = node.categories?.[0]?.name ?? null;
+  const garmentType = categoryName ? detectGarmentType(categoryName) : null;
   const variantCount = node.variants?.length ?? 0;
   const missingFields: string[] = [];
 
@@ -36,9 +38,16 @@ export function computeProductState(node: RawNode, existingModelUrl?: string | n
   const mainImage = allImages.find((img) => img.isMain) ?? allImages.sort((a, b) => a.order - b.order)[0] ?? null;
   const imageId = mainImage?.imageId ?? null;
 
+  // Collect all unique imageIds across all variants (front, back, detail shots)
+  const seenImageIds = new Set<string>();
+  if (imageId) seenImageIds.add(imageId);
+  for (const img of allImages) {
+    if (img.imageId) seenImageIds.add(img.imageId);
+  }
+  const imageIds = seenImageIds.size > 0 ? Array.from(seenImageIds) : null;
+
   // 3D model URL — read from IKAS attributes or fall through to existing DB value
-  const attrModelUrl = node.attributes?.find((a) => a.attributeId === MODEL_ATTRIBUTE_ID)?.value ?? null;
-  const modelUrl = attrModelUrl ?? existingModelUrl ?? null;
+  const modelUrl = existingModelUrl ?? null;
 
   let state: ScoredProduct["state"];
   let readinessScore: number;
@@ -64,7 +73,9 @@ export function computeProductState(node: RawNode, existingModelUrl?: string | n
     id: node.id,
     name: node.name,
     categoryName,
+    garmentType,
     imageId,
+    imageIds,
     modelUrl,
     variantCount,
     state,
@@ -92,7 +103,9 @@ async function upsertProduct(storeName: string, node: RawNode) {
       storeName,
       name: scored.name,
       categoryName: scored.categoryName,
+      garmentType: scored.garmentType,
       imageId: scored.imageId,
+      imageIds: scored.imageIds ? JSON.stringify(scored.imageIds) : null,
       modelUrl: scored.modelUrl,
       variantCount: scored.variantCount,
       state: scored.state,
@@ -102,7 +115,9 @@ async function upsertProduct(storeName: string, node: RawNode) {
     update: {
       name: scored.name,
       categoryName: scored.categoryName,
+      garmentType: scored.garmentType,
       imageId: scored.imageId,
+      imageIds: scored.imageIds ? JSON.stringify(scored.imageIds) : null,
       modelUrl: scored.modelUrl,
       variantCount: scored.variantCount,
       state: scored.state,
@@ -124,9 +139,13 @@ export async function syncAllProducts(storeName: string, accessToken: string): P
       variables: { limit, page },
     });
 
-    if (!result.isSuccess || !result.data?.listProduct) break;
+    if (!result.isSuccess || !result.data?.listProduct) {
+      console.error("[sync] listProduct failed:", JSON.stringify(result));
+      break;
+    }
 
     const { data: nodes, hasNext } = result.data.listProduct;
+    console.log(`[sync] page ${page}: ${nodes.length} products, hasNext=${hasNext}`);
 
     for (const node of nodes) {
       seenIds.push(node.id);

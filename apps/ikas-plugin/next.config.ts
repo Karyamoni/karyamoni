@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: ["*.myikas.com", "*.trycloudflare.com"],
+  allowedDevOrigins: ["*.myikas.com", "*.trycloudflare.com", "plugin.karyamoni.com", "staging.karyamoni.com"],
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.myikas.com" }],
   },

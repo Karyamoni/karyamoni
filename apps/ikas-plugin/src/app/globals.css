@@ -142,3 +142,11 @@ body {
   background: var(--lime);
   color: var(--ink);
 }
+
+/* ─── Size Chart Inputs — hide browser spinners ─────────────────────────── */
+.sc-input::-webkit-outer-spin-button,
+.sc-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.sc-input { -moz-appearance: textfield; }

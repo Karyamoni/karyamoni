@@ -2,11 +2,6 @@
 
 import { useCabinStore, UserMeasurements } from "./useCabinStore";
 
-const GARMENTS = [
-  { label: "Demo Dress", url: "/models/renomowana_hurtownia_wysokiej_jakosci/scene.gltf" },
-  { label: "Bikini",     url: "/models/leopard_print_bikini_model/scene.gltf" },
-];
-
 type SliderProps = {
   label: string;
   unit: string;
@@ -58,9 +53,47 @@ function MeasurementSlider({ label, unit, value, min, max, onChange }: SliderPro
   );
 }
 
+function SizeBadge({ size }: { size: string }) {
+  return (
+    <div
+      style={{
+        marginTop: "20px",
+        padding: "10px 14px",
+        borderRadius: "3px",
+        border: "1px solid rgba(190,255,92,0.3)",
+        background: "rgba(190,255,92,0.06)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "var(--caption)",
+          letterSpacing: "var(--caption-tracking)",
+          textTransform: "uppercase",
+          color: "rgba(250,250,249,0.4)",
+        }}
+      >
+        Best fit
+      </span>
+      <span
+        style={{
+          fontSize: "clamp(18px, 2vw, 24px)",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          color: "var(--cabin-accent)",
+        }}
+      >
+        {size}
+      </span>
+    </div>
+  );
+}
+
 export function CabinHUD() {
-  const { state, setMeasurements, setGarment, setActive } = useCabinStore();
-  const { measurements, garmentUrl, isLoading } = state;
+  const { state, setMeasurements, setActive } = useCabinStore();
+  const { measurements, isLoading, recommendedSize } = state;
 
   function update(key: keyof UserMeasurements) {
     return (v: number) => setMeasurements({ [key]: v });
@@ -82,7 +115,6 @@ export function CabinHUD() {
         overflowY: "auto",
       }}
     >
-      {/* Headline */}
       <div>
         <p
           style={{
@@ -109,53 +141,9 @@ export function CabinHUD() {
           ROOM
         </h2>
 
-        {/* Garment picker */}
-        <div style={{ marginBottom: "32px" }}>
-          <p
-            style={{
-              fontSize: "var(--caption)",
-              letterSpacing: "var(--caption-tracking)",
-              textTransform: "uppercase",
-              color: "rgba(250,250,249,0.35)",
-              marginBottom: "10px",
-            }}
-          >
-            Garment
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {GARMENTS.map((g) => {
-              const active = garmentUrl === g.url;
-              return (
-                <button
-                  key={g.url}
-                  onClick={() => setGarment(g.url)}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 12px",
-                    borderRadius: "3px",
-                    border: active
-                      ? "1px solid var(--cabin-accent)"
-                      : "1px solid rgba(250,250,249,0.1)",
-                    background: active ? "rgba(190,255,92,0.08)" : "transparent",
-                    color: active ? "var(--cabin-accent)" : "rgba(250,250,249,0.55)",
-                    fontSize: "var(--cabin-body)",
-                    fontWeight: active ? 600 : 400,
-                    cursor: "pointer",
-                    letterSpacing: "-0.01em",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  {g.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Sliders */}
         <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
           <MeasurementSlider
-            label="Height"
+            label="Height / Boy"
             unit="cm"
             value={measurements.height}
             min={140}
@@ -163,7 +151,15 @@ export function CabinHUD() {
             onChange={update("height")}
           />
           <MeasurementSlider
-            label="Chest"
+            label="Weight / Kilo"
+            unit="kg"
+            value={measurements.weight}
+            min={40}
+            max={150}
+            onChange={update("weight")}
+          />
+          <MeasurementSlider
+            label="Chest / Göğüs"
             unit="cm"
             value={measurements.chest}
             min={70}
@@ -171,7 +167,7 @@ export function CabinHUD() {
             onChange={update("chest")}
           />
           <MeasurementSlider
-            label="Waist"
+            label="Waist / Bel"
             unit="cm"
             value={measurements.waist}
             min={55}
@@ -179,7 +175,7 @@ export function CabinHUD() {
             onChange={update("waist")}
           />
           <MeasurementSlider
-            label="Hips"
+            label="Hips / Basen"
             unit="cm"
             value={measurements.hips}
             min={75}
@@ -187,9 +183,10 @@ export function CabinHUD() {
             onChange={update("hips")}
           />
         </div>
+
+        {recommendedSize && <SizeBadge size={recommendedSize} />}
       </div>
 
-      {/* CTA */}
       <button
         onClick={() => setActive(true)}
         disabled={isLoading}
@@ -205,6 +202,7 @@ export function CabinHUD() {
           cursor: isLoading ? "wait" : "pointer",
           transition: "background 0.2s var(--cabin-ease)",
           width: "100%",
+          marginTop: "32px",
         }}
       >
         {isLoading ? "Loading…" : "Try On"}

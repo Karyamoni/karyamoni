@@ -140,9 +140,29 @@ function ProductCard({ product, delay }: { product: IkasProduct; delay: number }
             }}
           >
             <span style={{ fontSize: "9px" }}>▶</span>
-            {product.modelUrl ? "3D Cabinet" : "Try On (no model)"}
+            Try On
           </a>
         )}
+        <a
+          href="/dashboard/size-charts"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: "3px 10px",
+            borderRadius: "2px",
+            fontSize: "10px",
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            textDecoration: "none",
+            background: "transparent",
+            color: "var(--ink-40)",
+            border: "1px solid var(--ink-10)",
+            transition: "color 0.15s ease",
+          }}
+        >
+          Size Charts
+        </a>
       </div>
     </motion.article>
   );
